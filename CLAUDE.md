@@ -35,6 +35,15 @@ BreakHis_BACH/
 └── ._*                       # macOS 元数据（AppleDouble），非项目内容
 ```
 
+## 数据与划分
+
+- **BreakHis**：7,909 张 8-bit RGB PNG，7,835 张 700×460 + 74 张 700×456（均为 slide 14-12465 的乳头状癌）；81 个唯一 slide ID。
+- **BreakHis 划分**：统一使用患者级五折划分 `Dataset/BreakHis/splits/patient_5fold.csv`（slide ID 分组，`14-13412` 的 DC/LC 合并；已校验无患者泄漏）。**不要使用** `Dataset/BreakHis/Folds.csv`（14-13412 在 fold 1/3/5 跨 train/test）。稀有亚型（A 4 例、PT 3 例、LC 5 例）无法保证每折齐全，亚型指标用汇总的 out-of-fold 预测。
+- **BACH**：400 张 2048×1536 TIFF，四类各 100；位深混合（381 张 16-bit、19 张 8-bit，均在 train），读入时逐图归一化。
+- **BACH 划分**：`Dataset/BACH/splits/eva_patient_split.csv`，采用 EVA 患者级索引（268 train / 132 val）；官方患者表仅部分填写（145/400），E6 few-shot 使用该划分。
+- **生成/校验**：`python3 cli/build_dataset_splits.py`、`python3 cli/validate_datasets.py`；测试 `python3 -m unittest discover -s test -v`。
+- 读图时排除 macOS `._*` 元数据文件。
+
 ## 工作约定
 
 1. **计划版本**：`Master_Plan/` 采用 `plan_v[版本号].md` 迭代，最新版本为准。更新计划时新建 `plan_vN.md`，保留旧版本；必要时同步更新 `Master_Plan/README.md`。
@@ -44,7 +53,7 @@ BreakHis_BACH/
 5. **论文撰写**：草稿、图表与成稿放 `Draft/`。
 6. **文档语言**：中文正文，术语与英文缩写按计划书原文保留。
 7. **实验严谨性底线**（见 `Master_Plan/plan_v1.md`）：
-   - 使用 BreakHis-IB 患者级划分 CSV，不使用图像级划分；五折患者级交叉验证。
+   - 使用患者级五折划分（slide ID 分组），不使用图像级划分；五折患者级交叉验证。
    - 主任务为患者级二分类（良性 vs 恶性），八分类仅作补充或消融。
    - 指标按 40× / 100× / 200× / 400× 分层报告，不混合平均。
    - BACH 只作外部验证，不参与调参；采用两阶段（零样本 + 冻结头校准）。

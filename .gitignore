@@ -4,3 +4,13 @@
 
 # IDE
 .idea/
+
+# Datasets (large; download separately)
+Dataset/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Local tool state
+.claude/scheduled_tasks.lock
