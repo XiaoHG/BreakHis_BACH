@@ -264,3 +264,60 @@ def png_header(path: str | Path) -> Dict[str, int]:
         "bit_depth": header[24],
         "color_type": header[25],
     }
+
+
+SPLIT_COLUMNS = {"path", "label", "subtype", "patient_id", "magnification", "fold"}
+
+
+def load_split_rows(path: str | Path) -> List[Dict[str, str]]:
+    """Load the generated patient-level fold CSV."""
+    path = Path(path)
+    with path.open(newline="", encoding="utf-8") as handle:
+        reader = csv.DictReader(handle)
+        missing = SPLIT_COLUMNS - set(reader.fieldnames or [])
+        if missing:
+            raise ValueError("split CSV missing columns: %s" % ", ".join(sorted(missing)))
+        rows = list(reader)
+    if not rows:
+        raise ValueError("empty split CSV: %s" % path)
+    return rows
+
+
+def split_train_val_test(
+    rows: Sequence[Dict[str, str]],
+    test_fold: int,
+    val_fraction: float = 0.1,
+    seed: int = 42,
+) -> tuple:
+    """Patient-level train/validation/test split for one CV fold.
+
+    The test fold is untouched. A class-stratified subset of patients from the
+    remaining folds is used for validation, so early stopping never sees test
+    patients.
+    """
+    test_fold = int(test_fold)
+    test = [row for row in rows if int(row["fold"]) == test_fold]
+    pool = [row for row in rows if int(row["fold"]) != test_fold]
+    if not test or not pool:
+        raise ValueError("empty train or test partition for fold %s" % test_fold)
+
+    by_patient: Dict[str, List[Dict[str, str]]] = defaultdict(list)
+    for row in pool:
+        by_patient[row["patient_id"]].append(row)
+    patient_label = {pid: group[0]["label"] for pid, group in by_patient.items()}
+
+    rng = random.Random(seed)
+    val_patients = set()
+    for label in sorted(set(patient_label.values())):
+        patient_ids = [pid for pid, value in patient_label.items() if value == label]
+        rng.shuffle(patient_ids)
+        count = max(1, int(round(val_fraction * len(patient_ids))))
+        val_patients.update(patient_ids[:count])
+
+    train = [row for row in pool if row["patient_id"] not in val_patients]
+    val = [row for row in pool if row["patient_id"] in val_patients]
+    if not train or not val:
+        raise ValueError("empty train or validation partition for fold %s" % test_fold)
+    if set(r["patient_id"] for r in train) & set(r["patient_id"] for r in val):
+        raise ValueError("patient leakage between train and validation")
+    return train, val, test

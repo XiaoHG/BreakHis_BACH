@@ -7,6 +7,7 @@
 ```text
 BreakHis_BACH/
 ├── CLAUDE.md                 # 本文件：Claude Code 项目上下文
+├── ENVIRONMENT.md            # 训练服务器环境记录
 ├── README.md                 # 项目根目录说明
 ├── .claude/
 │   └── settings.json         # 项目级 Claude Code 配置
@@ -43,6 +44,22 @@ BreakHis_BACH/
 - **BACH 划分**：`Dataset/BACH/splits/eva_patient_split.csv`，采用 EVA 患者级索引（268 train / 132 val）；官方患者表仅部分填写（145/400），E6 few-shot 使用该划分。
 - **生成/校验**：`python3 cli/build_dataset_splits.py`、`python3 cli/validate_datasets.py`；测试 `python3 -m unittest discover -s test -v`。
 - 读图时排除 macOS `._*` 元数据文件。
+
+## 训练环境
+
+详见 [ENVIRONMENT.md](ENVIRONMENT.md)。
+
+- 训练服务器：2 × Xeon Gold 6530（128 vCPU）、1.0 TiB RAM、RTX PRO 6000 Blackwell 96 GB、Driver 595.84 / CUDA 13.2；存储为本地 894 GB + 2 × 7 TB NVMe + 284 TB 共享文件系统。
+- 本机为 Apple M4 + MPS，适合数据处理、原型和 smoke test；正式 5 折与多基线实验在服务器上跑。
+- 上机先验证 PyTorch 能识别 Blackwell GPU（`torch.cuda.is_available()`、`torch.version.cuda`）。
+
+## 训练入口
+
+- 单折冒烟：`python3 cli/train.py --model resnet50 --folds 0 --epochs 1 --max-batches 10 --workers 0 --no-pretrained`
+- 全量五折：`python3 cli/train.py --model resnet50 --epochs 15 --batch-size 32`
+- 输出：`runs/<model>/summary.json`；每折含 `foldN/best.pt`、`history.csv`、`test_metrics.json`
+- 指标：accuracy、macro-F1、balanced accuracy、AUC、sensitivity、specificity，并按 40×/100×/200×/400× 分层
+- 训练脚本：`cli/train.py`；数据、模型、训练循环分别在 `src/data/`、`src/models/`、`src/engine/`
 
 ## 工作约定
 

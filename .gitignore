@@ -14,3 +14,8 @@ __pycache__/
 
 # Local tool state
 .claude/scheduled_tasks.lock
+
+# Training outputs
+runs/
+*.pt
+*.pth
